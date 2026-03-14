@@ -1,6 +1,6 @@
 import UIKit
 
-internal struct QuizStep {
+struct QuizStep {
     // картинка с афишей фильма с типом UIImage
     let image: UIImage
     // вопрос о рейтинге квиза
