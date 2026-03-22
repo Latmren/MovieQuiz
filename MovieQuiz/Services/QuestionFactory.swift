@@ -1,5 +1,17 @@
-extension QuizQuestion {
-    static let mockQuestions: [QuizQuestion] = [
+//
+//  QuestionFactory.swift
+//  MovieQuiz
+//
+//  Created by Dmitry Zherebyatnikov on 16.02.2026.
+//
+
+import Foundation
+
+class QuestionFactory: QuestionFactoryProtocol{
+    
+    weak var delegate: QuestionFactoryDelegate?
+    
+    private let questions: [QuizQuestion] = [
         QuizQuestion(
             image: "The Godfather",
             text: "Рейтинг этого фильма больше чем 6?",
@@ -51,4 +63,19 @@ extension QuizQuestion {
             correctAnswer: false
         ),
     ]
+    
+    func requestNextQuestion(){
+        guard let index = (0..<questions.count).randomElement() else {
+            return
+        }
+        
+        let question = questions[safe: index]
+        delegate?.didRecieveNextQuestion(question: question)
+        
+        //return questions[safe: index]
+    }
+    
+    func setDelegate(_ delegate: QuestionFactoryDelegate) {
+        self.delegate = delegate
+    }
 }
