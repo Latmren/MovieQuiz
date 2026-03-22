@@ -1,6 +1,8 @@
 import UIKit
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, AlertPresenterDelegate {
+final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate,
+    AlertPresenterDelegate
+{
     // MARK: - Outlets
 
     @IBOutlet weak private var yesButton: UIButton!
@@ -9,17 +11,19 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
     @IBOutlet weak private var counterLabel: UILabel!
     @IBOutlet weak private var textLabel: UILabel!
     @IBOutlet weak private var imageView: UIImageView!
-
+    @IBOutlet weak var loadingIndicator: UIActivityIndicatorView!
+    
     // MARK: - State
     private let questionsAmount: Int = 10
     private var questionFactory: QuestionFactoryProtocol?
     private var currentQuestion: QuizQuestion?
-    
+
     private var alert: AlertModel?
-    private var resultAlertPresenter: ResultAlertPresenter = ResultAlertPresenter()
-    
+    private var resultAlertPresenter: ResultAlertPresenter =
+        ResultAlertPresenter()
+
     private var statisticService: StatisticServiceProtocol = StatisticService()
-    
+
     // private let questions = QuizQuestion.mockQuestions
     private var currentQuestionIndex: Int = 0
     private var correctAnswersCount: Int = 0
@@ -30,47 +34,29 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         super.viewDidLoad()
         setupUI()
         setupFonts()
-        
-//        let alertPresenter = AlertPresenter()
-//        alertPresenter.setDelegate(self)
-//        self.alertPresenter = alertPresenter
-        
-//        print(NSHomeDirectory())
-//        UserDefaults.standard.set(true, forKey: "viewDidLoad")
-        
-        //statisticService = StatisticService()
-        
-//        let allValues = UserDefaults.standard.dictionaryRepresentation()
-//
-//        // Получаем все ключи словаря, затем в цикле удаляем их
-//        allValues.keys.forEach { key in
-//            UserDefaults.standard.removeObject(forKey: key)
-//        } 
-        
-        let questionFactory = QuestionFactory()
-        questionFactory.setDelegate(self)
-        self.questionFactory = questionFactory
-        
-        questionFactory.requestNextQuestion()
+
+        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
+
+        showLoadingIndicator()
+        questionFactory?.loadData()
     }
 
     // MARK: - QuestionFactoryDelegate
-    
-    func didRecieveNextQuestion(question: QuizQuestion?) {
-        
+
+    func didReceiveNextQuestion(question: QuizQuestion?) {
+
         guard let question = question else {
             return
         }
-        
-        currentQuestion=question
+
+        currentQuestion = question
         let viewModel = convert(model: question)
-        
+
         DispatchQueue.main.async { [weak self] in
             self?.showNextView(quiz: viewModel)
         }
     }
-    
-    
+
     
     // MARK: - Setup
 
@@ -89,12 +75,46 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         yesButton.titleLabel?.font = UIFont(name: "YSDisplay-Medium", size: 20)
         noButton.titleLabel?.font = UIFont(name: "YSDisplay-Medium", size: 20)
     }
+    
+    private func showLoadingIndicator() {
+        loadingIndicator.isHidden = false // говорим, что индикатор загрузки не скрыт
+        loadingIndicator.startAnimating() // включаем анимацию
+    }
+    
+    private func showNetworkError(message: String) {
+        loadingIndicator.isHidden = true // скрываем индикатор загрузки
+        
+        let model = AlertModel(title: "Что-то пошло не так(",
+                               message: message,
+                               buttonText: "Попробовать ещё раз"){ [weak self] in
+            guard let self else { return }
+            
+            self.currentQuestionIndex = 0
+            self.correctAnswersCount = 0
+            self.imageView.layer.borderWidth = 0.0
+            showLoadingIndicator()
+            questionFactory?.loadData()
+
+        }
+        resultAlertPresenter.showResults(targetView: self, quiz: model)
+        
+    }
+    
+    func didLoadDataFromServer() {
+        loadingIndicator.isHidden = true // скрываем индикатор загрузки
+        questionFactory?.requestNextQuestion()
+    }
+
+    func didFailToLoadData(with error: Error) {
+        showNetworkError(message: error.localizedDescription) // возьмём в качестве сообщения описание ошибки
+    }
+    
 
     // MARK: - Quiz Logic
 
     private func convert(model: QuizQuestion) -> QuizStep {
         let questionStep = QuizStep(
-            image: UIImage(named: model.image) ?? UIImage(),
+            image: UIImage(data: model.image) ?? UIImage(),
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
         )
@@ -113,7 +133,11 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
             imageView.layer.borderWidth = 0.0
             questionFactory?.requestNextQuestion()
         } else {
-            let currentGameResult = GameResult(correct: correctAnswersCount, total: questionsAmount, date: Date())
+            let currentGameResult = GameResult(
+                correct: correctAnswersCount,
+                total: questionsAmount,
+                date: Date()
+            )
             statisticService.store(currentGameResult)
             let quizResults = QuizResults(
                 title: "Раунд окончен",
@@ -139,7 +163,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         }
 
         // запускаем задачу через 1 секунду c помощью диспетчера задач
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {[weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self else { return }
             // код, который мы хотим вызвать через 1 секунду
             self.nextStepOrResult()
@@ -155,17 +179,17 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         let alertModel = AlertModel(
             title: result.title,
             message: result.text,
-            buttonText: result.buttonText)
-            { [weak self] in
-                guard let self else { return }
-                self.currentQuestionIndex = 0
-                self.correctAnswersCount = 0
-                self.imageView.layer.borderWidth = 0.0
-                self.questionFactory?.requestNextQuestion()
-            }
-        
+            buttonText: result.buttonText
+        ) { [weak self] in
+            guard let self else { return }
+            self.currentQuestionIndex = 0
+            self.correctAnswersCount = 0
+            self.imageView.layer.borderWidth = 0.0
+            self.questionFactory?.requestNextQuestion()
+        }
+
         resultAlertPresenter.showResults(targetView: self, quiz: alertModel)
-        
+
     }
 
     // MARK: - Actions
@@ -191,5 +215,6 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         yesButton.isEnabled = isEnabled
         noButton.isEnabled = isEnabled
     }
+    
 
 }
