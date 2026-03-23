@@ -24,9 +24,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate,
 
     private var statisticService: StatisticServiceProtocol = StatisticService()
 
-    // private let questions = QuizQuestion.mockQuestions
+    
     private var currentQuestionIndex: Int = 0
     private var correctAnswersCount: Int = 0
+    
+    private let titleTextError = "Что-то пошло не так("
+    private let buttonTextError = "Попробовать ещё раз"
 
     // MARK: - Lifecycle
 
@@ -77,16 +80,16 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate,
     }
     
     private func showLoadingIndicator() {
-        loadingIndicator.isHidden = false // говорим, что индикатор загрузки не скрыт
-        loadingIndicator.startAnimating() // включаем анимацию
+        loadingIndicator.isHidden = false
+        loadingIndicator.startAnimating()
     }
     
     private func showNetworkError(message: String) {
-        loadingIndicator.isHidden = true // скрываем индикатор загрузки
+        loadingIndicator.isHidden = true
         
-        let model = AlertModel(title: "Что-то пошло не так(",
+        let model = AlertModel(title: titleTextError,
                                message: message,
-                               buttonText: "Попробовать ещё раз"){ [weak self] in
+                               buttonText: buttonTextError){ [weak self] in
             guard let self else { return }
             
             self.currentQuestionIndex = 0
@@ -94,19 +97,19 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate,
             self.imageView.layer.borderWidth = 0.0
             showLoadingIndicator()
             questionFactory?.loadData()
-
+            
         }
         resultAlertPresenter.showResults(targetView: self, quiz: model)
         
     }
     
     func didLoadDataFromServer() {
-        loadingIndicator.isHidden = true // скрываем индикатор загрузки
+        loadingIndicator.isHidden = true
         questionFactory?.requestNextQuestion()
     }
 
     func didFailToLoadData(with error: Error) {
-        showNetworkError(message: error.localizedDescription) // возьмём в качестве сообщения описание ошибки
+        showNetworkError(message: error.localizedDescription)
     }
     
 
@@ -165,7 +168,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate,
         // запускаем задачу через 1 секунду c помощью диспетчера задач
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self else { return }
-            // код, который мы хотим вызвать через 1 секунду
+            
             self.nextStepOrResult()
             self.setButtonsEnabled(true)
         }
@@ -174,7 +177,6 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate,
     // MARK: - Results
 
     private func showResults(quiz result: QuizResults) {
-        // создаём объекты всплывающего окна
 
         let alertModel = AlertModel(
             title: result.title,
@@ -203,7 +205,6 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate,
     }
 
     private func handleAnswer(isYes: Bool) {
-        //let currentQuestion = questions[currentQuestionIndex]
         guard let currentQuestion = currentQuestion else {
             return
         }
