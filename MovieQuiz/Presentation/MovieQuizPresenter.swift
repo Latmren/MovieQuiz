@@ -84,13 +84,13 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
     }
         
     func handleAnswer(isYes: Bool) {
+        
+        viewController?.setButtonsEnabled(false)
         guard let currentQuestion = currentQuestion else {
             return
         }
         
         proceedWithAnswer(isCorrect: currentQuestion.correctAnswer == isYes)
-        
-        viewController?.setButtonsEnabled(false)
     }
     
     func proceedWithAnswer(isCorrect: Bool) {
@@ -103,7 +103,6 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
             guard let self else { return }
             
             self.proceedToNextQuestionOrResults()
-            self.viewController?.setButtonsEnabled(true)
         }
     }
     
@@ -127,6 +126,9 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
             self.switchToNextQuestion()
             questionFactory?.requestNextQuestion()
         }
+        
+        sleep(1)
+        self.viewController?.setButtonsEnabled(true)
     }
     
     func makeResultsMessage() -> String {
