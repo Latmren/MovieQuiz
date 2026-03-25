@@ -15,8 +15,12 @@ protocol MoviesLoading {
 
 struct MoviesLoader: MoviesLoading {
     // MARK: - NetworkClient
-    private let networkClient = NetworkClient()
-    private var useMocks: Bool = true // использовать моковые данные
+    private let networkClient: NetworkRouting
+    private var useMocks: Bool = false // использовать моковые данные
+    
+    init(networkClient: NetworkRouting = NetworkClient()) {
+        self.networkClient = networkClient
+    }
 
     // MARK: - URL
     private var mostPopularMoviesUrl: URL {
